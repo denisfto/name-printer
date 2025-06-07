@@ -184,12 +184,7 @@ class WindowsNamePrinter:
         self.surname_entry = tk.Entry(input_frame, font=("Arial", 14), width=35)
         self.surname_entry.grid(row=1, column=1, pady=8, padx=(10, 0), sticky=tk.W)
         
-        # Additional text input
-        tk.Label(input_frame, text="Additional Text:", font=("Arial", 12)).grid(
-            row=2, column=0, sticky=tk.NW, pady=8)
-        self.additional_text = tk.Text(input_frame, font=("Arial", 12), 
-                                      width=35, height=4)
-        self.additional_text.grid(row=2, column=1, pady=8, padx=(10, 0), sticky=tk.W)
+        # Removed additional text input to simplify interface
         
         # Preview frame
         preview_frame = tk.LabelFrame(self.root, text="Preview", 
@@ -225,7 +220,6 @@ class WindowsNamePrinter:
         # Bind events for auto-preview
         self.name_entry.bind('<KeyRelease>', lambda e: self.update_preview())
         self.surname_entry.bind('<KeyRelease>', lambda e: self.update_preview())
-        self.additional_text.bind('<KeyRelease>', lambda e: self.update_preview())
         
         # Initial setup
         self.update_printer_status()
@@ -250,7 +244,6 @@ class WindowsNamePrinter:
         """Update print preview"""
         name = self.name_entry.get().strip()
         surname = self.surname_entry.get().strip()
-        additional = self.additional_text.get(1.0, tk.END).strip()
         
         preview_lines = []
         
@@ -258,13 +251,6 @@ class WindowsNamePrinter:
             preview_lines.append(f"FIRST NAME (large): {name.upper()}")
         if surname:
             preview_lines.append(f"LAST NAME (large):  {surname.upper()}")
-        
-        if additional.strip():
-            preview_lines.append("")
-            preview_lines.append("ADDITIONAL TEXT (smaller):")
-            for line in additional.strip().split('\n'):
-                if line.strip():
-                    preview_lines.append(f"  {line.upper()}")
         
         if not preview_lines:
             preview_lines = ["Enter first name or last name to see preview"]
@@ -275,9 +261,8 @@ class WindowsNamePrinter:
             preview_lines.append("PRINT SETTINGS:")
             longest = max([name, surname], key=len) if name and surname else (name or surname)
             preview_lines.append(f"• Longest text: '{longest.upper()}'")
-            preview_lines.append("• Font size: Automatically maximized")
-            preview_lines.append("• Layout: A4 Landscape, left-aligned")
-            preview_lines.append("• Additional text: 15% smaller")
+            preview_lines.append(f"• Font size: Automatically maximized")
+            preview_lines.append(f"• Layout: A4 Landscape, left-aligned")
         
         preview_text = '\n'.join(preview_lines)
         
@@ -286,7 +271,7 @@ class WindowsNamePrinter:
         self.preview_text.insert(1.0, preview_text)
         self.preview_text.config(state=tk.DISABLED)
     
-    def create_print_image(self, name, surname, additional_text=""):
+    def create_print_image(self, name, surname):
         """Create image for printing with maximum font size"""
         # A4 landscape size at 300 DPI: 3508x2480 pixels
         width, height = 3508, 2480
@@ -310,13 +295,6 @@ class WindowsNamePrinter:
         
         if not main_lines:
             return None
-        
-        # Additional text lines (uppercase)
-        additional_lines = []
-        if additional_text.strip():
-            for line in additional_text.strip().split('\n'):
-                if line.strip():
-                    additional_lines.append(line.strip().upper())
         
         # Find longest main text
         longest_main_text = max(main_lines, key=len)
@@ -368,27 +346,6 @@ class WindowsNamePrinter:
             except:
                 best_font_obj = ImageFont.load_default()
         
-        # Create font for additional text (15% smaller)
-        additional_font = None
-        if additional_lines:
-            try:
-                additional_font_size = int(best_font_size * 0.85)
-                font_paths = [
-                    "C:\\Windows\\Fonts\\arial.ttf",
-                    "C:\\Windows\\Fonts\\calibri.ttf"
-                ]
-                for font_path in font_paths:
-                    try:
-                        if os.path.exists(font_path):
-                            additional_font = ImageFont.truetype(font_path, additional_font_size)
-                            break
-                    except:
-                        continue
-                if additional_font is None:
-                    additional_font = ImageFont.load_default()
-            except:
-                additional_font = best_font_obj
-        
         # Calculate line heights and spacing
         line_heights = []
         line_spacing = int(best_font_size * 0.3)
@@ -399,19 +356,8 @@ class WindowsNamePrinter:
             line_height = bbox[3] - bbox[1]
             line_heights.append(line_height)
         
-        # Heights for additional lines
-        for line in additional_lines:
-            if additional_font:
-                bbox = draw.textbbox((0, 0), line, font=additional_font)
-                line_height = bbox[3] - bbox[1]
-            else:
-                line_height = int(best_font_size * 0.85)
-            line_heights.append(line_height)
-        
         # Calculate total height
-        total_height = sum(line_heights) + (len(main_lines + additional_lines) - 1) * line_spacing
-        if main_lines and additional_lines:
-            total_height += int(line_spacing * 1.5)  # Extra space before additional text
+        total_height = sum(line_heights) + (len(main_lines) - 1) * line_spacing
         
         # Center vertically
         start_y = margin_y + (available_height - total_height) // 2
@@ -421,17 +367,6 @@ class WindowsNamePrinter:
         for i, line in enumerate(main_lines):
             x_pos = margin_x  # Left-aligned
             draw.text((x_pos, current_y), line, fill='black', font=best_font_obj)
-            current_y += line_heights[i] + line_spacing
-        
-        # Extra space before additional text
-        if additional_lines:
-            current_y += int(line_spacing * 1.5)
-        
-        # Draw additional text
-        for i, line in enumerate(additional_lines, len(main_lines)):
-            x_pos = margin_x  # Left-aligned
-            if additional_font:
-                draw.text((x_pos, current_y), line, fill='black', font=additional_font)
             current_y += line_heights[i] + line_spacing
         
         return image
@@ -444,7 +379,6 @@ class WindowsNamePrinter:
         
         name = self.name_entry.get().strip()
         surname = self.surname_entry.get().strip()
-        additional = self.additional_text.get(1.0, tk.END).strip()
         
         if not name and not surname:
             messagebox.showwarning("Warning", "Please enter at least first name or last name!")
@@ -456,7 +390,7 @@ class WindowsNamePrinter:
         
         try:
             # Create image
-            image = self.create_print_image(name, surname, additional)
+            image = self.create_print_image(name, surname)
             if not image:
                 raise Exception("Failed to create print image")
             
