@@ -1,0 +1,37 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Позволяет запускать вручную
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pywin32 Pillow pyinstaller
+    
+    - name: Build EXE
+      run: |
+        pyinstaller --onefile --windowed --name="NamePrinter" windows_printer_app.py
+    
+    - name: Upload EXE artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: NamePrinter-Windows
+        path: dist/NamePrinter.exe
+        retention-days: 30
